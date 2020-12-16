@@ -30,20 +30,21 @@ void shminit() {
 
 int shm_open(int id, char **pointer) {
 	
-  	int i, j, sz, newsz;
+  	int i, j;
 	int maxid;
 	char* mem;
-	uint a;
-	a = 0;
+	uint a, sz, newsz;
+	
   	initlock(&(shm_table.lock), "SHM lock");
-  	acquire(&(shm_table.lock));
-  	//find id if it exists
+	acquire(&(shm_table.lock));
+  	a = PGROUNDUP(myproc()->sz);
+	//find id if it exists
 	for (i = 0; i< 64; i++) {
     		if(shm_table.shm_pages[i].id == id){
-			mappages(myproc()->pgdir, (char*)a , PGSIZE, V2P(shm_table.shm_pages[i].frame), PTE_W|PTE_U);
+			if(mappages(myproc()->pgdir, (char *)a , PGSIZE, V2P(shm_table.shm_pages[i].frame), PTE_W|PTE_U) < 0)
+				cprintf("you suck\n");
 			shm_table.shm_pages[i].refcnt++;
-			*pointer = (char*)a;
-   			myproc()->sz += PGSIZE;
+			*pointer = (char *)a;
 			release(&(shm_table.lock));
 			return 0;	
 		}
@@ -55,7 +56,6 @@ int shm_open(int id, char **pointer) {
 			break;
 		}
 	}
-	
 	maxid = 0;
 	for(j = 0; j < 64; j++){	
 		//find larges id value then add 1 for new id
@@ -65,13 +65,13 @@ int shm_open(int id, char **pointer) {
 
 	maxid++; //new id 
 	sz = myproc()->sz;
-	newsz = sz - PGSIZE;
+	newsz = sz + PGSIZE;
 	
 	if(newsz >= KERNBASE)
     		return -1;
   	
 	
-
+	mem = 0;
 	a = PGROUNDUP(sz);
 	for(; a < newsz; a += PGSIZE){
     		mem = kalloc();
@@ -88,25 +88,21 @@ int shm_open(int id, char **pointer) {
       			return -1;
     		}
   	}
-	
-	*pointer = (char*)a;
+	*pointer = (char*)sz;
 	
 	shm_table.shm_pages[i].id = maxid;
-	shm_table.shm_pages[i].frame = (char*)a;
+	shm_table.shm_pages[i].frame = mem;
 	shm_table.shm_pages[i].refcnt = 1; 
 	
 	myproc()->sz = newsz;
   	release(&(shm_table.lock));
-		
-	
-	
 	return 1;
-}
 
+}
 
 int shm_close(int id) {
 	
-  	int i;
+	int i;
   	initlock(&(shm_table.lock), "SHM lock");
   	acquire(&(shm_table.lock));
   	for (i = 0; i< 64; i++) {
@@ -121,9 +117,6 @@ int shm_close(int id) {
 		}
   	}
   	release(&(shm_table.lock));
-
-
-
-
+	
 	return 0; //added to remove compiler warning -- you should decide what to return
 }
