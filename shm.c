@@ -111,9 +111,14 @@ int shm_close(int id) {
 				shm_table.shm_pages[i].id =0;
     				shm_table.shm_pages[i].frame =0;
    	 			shm_table.shm_pages[i].refcnt =0;
+				release(&(shm_table.lock));
+				return 1;
 			}
-			else
+			else{
 				shm_table.shm_pages[i].refcnt--;
+				release(&(shm_table.lock));
+				return 1;
+			}
 		}
   	}
   	release(&(shm_table.lock));

@@ -36,6 +36,7 @@ shm_open(1,(char **)&counter);
   if(pid)
      {
        printf(1,"Counter in parent is %d\n",counter->cnt);
+       wait();
     } else
     printf(1,"Counter in child is %d\n\n",counter->cnt);
 
